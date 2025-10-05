@@ -420,6 +420,58 @@
             font-weight: 600;
         }
         
+        .winner-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 25px;
+            background: rgba(30, 30, 30, 0.9);
+            border-radius: 15px;
+            border: 2px solid #bb86fc;
+            box-shadow: 0 0 25px rgba(187, 134, 252, 0.4);
+        }
+        
+        .winner-title {
+            font-size: 2.2rem;
+            color: #ffd700;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .winner-name {
+            font-size: 2.5rem;
+            color: #ffd700;
+            font-weight: bold;
+            margin: 15px 0;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+        }
+        
+        .winner-details {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .winner-category {
+            background: rgba(187, 134, 252, 0.2);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 1px solid #bb86fc;
+        }
+        
+        .winner-category h4 {
+            color: #bb86fc;
+            margin-bottom: 8px;
+        }
+        
+        .tie-message {
+            font-size: 1.8rem;
+            color: #03dac6;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
         @media (max-width: 768px) {
             .players-section {
                 flex-direction: column;
@@ -436,6 +488,11 @@
             .result-card {
                 min-width: 100%;
             }
+            
+            .winner-details {
+                flex-direction: column;
+                gap: 15px;
+            }
         }
     </style>
 </head>
@@ -444,7 +501,7 @@
         <header>
             <h1>CPU Scheduling Game</h1>
             <div class="game-description">
-                <p>Two players compete with the same processes. Use preemptive algorithms to switch between processes and optimize scheduling!</p>
+                <p>Two players compete with the same processes. The player with better scheduling (lower waiting and response times) wins!</p>
             </div>
         </header>
         
@@ -624,6 +681,10 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="winner-section" id="winnerSection" style="display: none;">
+                <!-- Winner declaration will be shown here -->
+            </div>
         </section>
     </div>
 
@@ -672,6 +733,7 @@
         const startGameBtn = document.getElementById('startGame');
         const resetGameBtn = document.getElementById('resetGame');
         const resultsSection = document.getElementById('resultsSection');
+        const winnerSection = document.getElementById('winnerSection');
         const turnIndicator = document.getElementById('turnIndicator');
         const cpuProcessElement = document.getElementById('cpuProcess');
         const player1Status = document.getElementById('player1Status');
@@ -1157,6 +1219,9 @@
             player1Status.classList.remove('active');
             player2Status.textContent = 'Game completed';
             player2Status.classList.remove('active');
+            
+            // Declare winner
+            declareWinner();
         }
         
         function displayResults() {
@@ -1203,6 +1268,108 @@
             );
         }
         
+        function declareWinner() {
+            const p1Waiting = gameState.player1.results.averageWaitingTime;
+            const p2Waiting = gameState.player2.results.averageWaitingTime;
+            const p1Response = gameState.player1.results.averageResponseTime;
+            const p2Response = gameState.player2.results.averageResponseTime;
+            
+            let winnerHTML = '';
+            
+            // Determine overall winner
+            if (p1Waiting < p2Waiting && p1Response < p2Response) {
+                // Player 1 wins both categories
+                winnerHTML = `
+                    <div class="winner-title">🏆 Tournament Champion 🏆</div>
+                    <div class="winner-name">${gameState.player1.name}</div>
+                    <div style="margin: 15px 0; font-size: 1.2rem;">Won both Waiting Time and Response Time categories!</div>
+                    <div class="winner-details">
+                        <div class="winner-category">
+                            <h4>Waiting Time</h4>
+                            <div>${p1Waiting.toFixed(2)} vs ${p2Waiting.toFixed(2)}</div>
+                        </div>
+                        <div class="winner-category">
+                            <h4>Response Time</h4>
+                            <div>${p1Response.toFixed(2)} vs ${p2Response.toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (p2Waiting < p1Waiting && p2Response < p1Response) {
+                // Player 2 wins both categories
+                winnerHTML = `
+                    <div class="winner-title">🏆 Tournament Champion 🏆</div>
+                    <div class="winner-name">${gameState.player2.name}</div>
+                    <div style="margin: 15px 0; font-size: 1.2rem;">Won both Waiting Time and Response Time categories!</div>
+                    <div class="winner-details">
+                        <div class="winner-category">
+                            <h4>Waiting Time</h4>
+                            <div>${p2Waiting.toFixed(2)} vs ${p1Waiting.toFixed(2)}</div>
+                        </div>
+                        <div class="winner-category">
+                            <h4>Response Time</h4>
+                            <div>${p2Response.toFixed(2)} vs ${p1Response.toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (p1Waiting < p2Waiting) {
+                // Player 1 wins waiting time, Player 2 wins response time
+                winnerHTML = `
+                    <div class="winner-title">🏆 Split Decision 🏆</div>
+                    <div class="winner-details">
+                        <div class="winner-category">
+                            <h4>Waiting Time Winner</h4>
+                            <div class="winner-name">${gameState.player1.name}</div>
+                            <div>${p1Waiting.toFixed(2)} vs ${p2Waiting.toFixed(2)}</div>
+                        </div>
+                        <div class="winner-category">
+                            <h4>Response Time Winner</h4>
+                            <div class="winner-name">${gameState.player2.name}</div>
+                            <div>${p2Response.toFixed(2)} vs ${p1Response.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div class="tie-message">It's a tie! Both players showed excellent scheduling skills!</div>
+                `;
+            } else if (p2Waiting < p1Waiting) {
+                // Player 2 wins waiting time, Player 1 wins response time
+                winnerHTML = `
+                    <div class="winner-title">🏆 Split Decision 🏆</div>
+                    <div class="winner-details">
+                        <div class="winner-category">
+                            <h4>Waiting Time Winner</h4>
+                            <div class="winner-name">${gameState.player2.name}</div>
+                            <div>${p2Waiting.toFixed(2)} vs ${p1Waiting.toFixed(2)}</div>
+                        </div>
+                        <div class="winner-category">
+                            <h4>Response Time Winner</h4>
+                            <div class="winner-name">${gameState.player1.name}</div>
+                            <div>${p1Response.toFixed(2)} vs ${p2Response.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div class="tie-message">It's a tie! Both players showed excellent scheduling skills!</div>
+                `;
+            } else {
+                // Complete tie
+                winnerHTML = `
+                    <div class="winner-title">🏆 Perfect Tie! 🏆</div>
+                    <div class="tie-message">Both players achieved identical performance!</div>
+                    <div class="winner-details">
+                        <div class="winner-category">
+                            <h4>Waiting Time</h4>
+                            <div>${p1Waiting.toFixed(2)} (Both)</div>
+                        </div>
+                        <div class="winner-category">
+                            <h4>Response Time</h4>
+                            <div>${p1Response.toFixed(2)} (Both)</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; font-size: 1.2rem;">Incredible scheduling by both competitors!</div>
+                `;
+            }
+            
+            winnerSection.innerHTML = winnerHTML;
+            winnerSection.style.display = 'block';
+        }
+        
         function resetGame() {
             // Reset game state
             gameState.gameStarted = false;
@@ -1214,6 +1381,7 @@
             
             // Hide results section and turn indicator
             resultsSection.style.display = 'none';
+            winnerSection.style.display = 'none';
             turnIndicator.style.display = 'none';
             liveGanttSection.style.display = 'none';
             player1IdleBtn.style.display = 'none';
