@@ -702,7 +702,8 @@
                 completedProcesses: 0,
                 ganttChart: [],
                 currentProcess: null,
-                lastProcess: null
+                lastProcess: null,
+                roundRobinIndex: 0 // Track current position in Round Robin queue
             },
             player2: {
                 name: "Player 2",
@@ -715,7 +716,8 @@
                 completedProcesses: 0,
                 ganttChart: [],
                 currentProcess: null,
-                lastProcess: null
+                lastProcess: null,
+                roundRobinIndex: 0 // Track current position in Round Robin queue
             },
             processCount: 5,
             maxBurstTime: 10,
@@ -908,6 +910,7 @@
             gameState.player1.ganttChart = [];
             gameState.player1.currentProcess = null;
             gameState.player1.lastProcess = null;
+            gameState.player1.roundRobinIndex = 0;
             
             gameState.player2.currentTime = 0;
             gameState.player2.waitingTime = 0;
@@ -916,6 +919,7 @@
             gameState.player2.ganttChart = [];
             gameState.player2.currentProcess = null;
             gameState.player2.lastProcess = null;
+            gameState.player2.roundRobinIndex = 0;
             
             // Start with player 1
             gameState.currentPlayer = 1;
@@ -996,8 +1000,12 @@
         }
         
         function executeProcess(process, player) {
+            // Handle Round Robin algorithm separately
+            if (player.algorithm === 'RoundRobin') {
+                executeRoundRobin(process, player);
+            }
             // Handle preemptive algorithms
-            if (player.algorithm.includes('PriorityP') || player.algorithm === 'SRTF') {
+            else if (player.algorithm.includes('PriorityP') || player.algorithm === 'SRTF') {
                 // For preemptive algorithms, we execute for 1 time unit
                 const executionTime = 1;
                 
@@ -1043,11 +1051,8 @@
                 }
                 
             } else {
-                // Non-preemptive algorithms
+                // Non-preemptive algorithms (FCFS, SJF, Priority)
                 let executionTime = process.burstTime;
-                if (player.algorithm === 'RoundRobin') {
-                    executionTime = Math.min(2, process.burstTime);
-                }
                 
                 // Record response time if not already recorded
                 if (!process.responseRecorded) {
@@ -1085,6 +1090,65 @@
             
             // Update last process
             player.lastProcess = process;
+        }
+        
+        function executeRoundRobin(process, player) {
+            const TIME_QUANTUM = 2; // Fixed time quantum for Round Robin
+            
+            // Initialize remaining time if not set
+            if (!process.remainingTime) {
+                process.remainingTime = process.burstTime;
+            }
+            
+            // Record response time if not already recorded
+            if (!process.responseRecorded) {
+                player.responseTime += player.currentTime - process.arrivalTime;
+                process.responseRecorded = true;
+            }
+            
+            // Calculate waiting time for this execution
+            if (player.lastProcess && player.lastProcess.id !== process.id) {
+                player.waitingTime += player.currentTime - process.lastExecuted;
+            }
+            
+            // Determine execution time (minimum of remaining time and time quantum)
+            const executionTime = Math.min(TIME_QUANTUM, process.remainingTime);
+            
+            // Update last executed time
+            process.lastExecuted = player.currentTime + executionTime;
+            
+            // Add to Gantt chart
+            player.ganttChart.push({
+                process: process.id,
+                start: player.currentTime,
+                end: player.currentTime + executionTime
+            });
+            
+            // Update current time
+            player.currentTime += executionTime;
+            
+            // Update remaining time
+            process.remainingTime -= executionTime;
+            
+            // Check if process is completed
+            if (process.remainingTime <= 0) {
+                process.completed = true;
+                player.completedProcesses++;
+                player.currentProcess = null;
+            } else {
+                player.currentProcess = process;
+            }
+            
+            // Update Round Robin index for next selection
+            updateRoundRobinIndex(player);
+        }
+        
+        function updateRoundRobinIndex(player) {
+            // Find the next available process in circular manner
+            const availableProcesses = player.availableProcesses.filter(p => !p.completed);
+            if (availableProcesses.length > 0) {
+                player.roundRobinIndex = (player.roundRobinIndex + 1) % availableProcesses.length;
+            }
         }
         
         function idleCPU(player) {
